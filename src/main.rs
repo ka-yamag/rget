@@ -1,5 +1,5 @@
-mod downloader;
 use downloader::DownLoader;
+mod downloader;
 
 use std::path::PathBuf;
 use url::Url;
@@ -23,8 +23,6 @@ fn main() {
     let args = Cli::from_args();
     println!("{:#?}", args);
 
-    // let d = DownLoader {
-    //     url: args.url,
-    //     chunk_size: args.chunk_size,
-    // }.init();
+    let d = DownLoader::new(args);
+    println!("{:#?}", d);
 }
