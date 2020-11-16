@@ -1,50 +1,55 @@
 use reqwest;
 use std::time::Duration;
 use crate::Cli;
+use anyhow::anyhow;
 
 const DEFAULT_THREDING: u32 = 10;
 const DEFAULT_MIN_CHUNK_SIZE: u32 = 1000000;
 const DEFAULT_TIMEOUT_SEC: u64 = 10;
 
 #[derive(Debug)]
-pub struct DownLoader {
-    url: String,
+pub struct DownLoader<'a> {
+    url: &'a str,
     chunk_size: u32,
     threding: u32,
-    client: reqwest::Client,
 }
 
-impl DownLoader {
-    pub fn new(cli: Cli) -> Result<DownLoader, reqwest::Error> {
+impl<'a> DownLoader<'a> {
+    pub fn new(cli: &mut Cli) -> anyhow::Result<DownLoader> {
+        let mut rt = tokio::runtime::Runtime::new()?;
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SEC))
+            // .proxy()
             .build()?;
 
-        Ok(DownLoader {
-            url: cli.url.into_string(),
-            chunk_size: cli.chunk_size,
-            threding: cli.threding,
-            client: client,
-        })
-    }
+        let s = async {
+            client.head(cli.url.path())
+                .send()
+                .await
+        };
 
-    pub async fn init(&mut self) -> Result<&mut DownLoader, reqwest::Error> {
-        let response = self.client.head(&self.url).send().await?;
+        let response = rt.block_on(s)?;
 
         if let Err(err) = response.error_for_status() {
-            return Err(err)
+            return Err(anyhow!(err))
         }
 
         // Set concurrency default to 10
-        if self.threding == 0 {
-            self.threding = DEFAULT_THREDING;
+        if cli.threding <= 0 {
+            cli.threding = DEFAULT_THREDING;
         }
 
         // Set default chunk size
-        if self.chunk_size == 0 {
+        if cli.chunk_size <= 0 {
+            cli.chunk_size = DEFAULT_MIN_CHUNK_SIZE;
         }
 
-        Ok(self)
+        Ok(DownLoader {
+            url: cli.url.as_str(),
+            chunk_size: cli.chunk_size,
+            threding: cli.threding,
+        })
     }
 }
 
