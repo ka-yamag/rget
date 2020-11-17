@@ -64,14 +64,14 @@ mod tests {
         let url_str = "http://test.com";
         let url = Url::parse(url_str).unwrap();
 
-        let c = Cli {
+        let mut c = Cli {
             url: url,
             chunk_size: 5,
             threding: 5,
             out: PathBuf::new(),
         };
 
-        if let Ok(d) = DownLoader::new(c) {
+        if let Ok(d) = DownLoader::new(&mut c) {
             assert_eq!(d.url, "http://test.com/");
             assert_eq!(d.chunk_size, 5);
             assert_eq!(d.threding, 5);
